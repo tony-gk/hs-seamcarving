@@ -75,5 +75,5 @@ fun negateImage(image: BufferedImage) {
     }
 }
 
-
+class NegativeImageException(message: String) : Exception(message)
 
