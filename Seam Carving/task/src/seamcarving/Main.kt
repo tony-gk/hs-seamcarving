@@ -7,13 +7,12 @@ import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Paths
 import javax.imageio.ImageIO
-import kotlin.math.max
 import kotlin.math.sqrt
 
 fun main(args: Array<String>) {
     try {
         val files = retrieveFiles(args)
-        createNegativeImage(files.first, files.second)
+        createSeamImage(files.first, files.second)
     } catch (e: ImageProcessingException) {
         System.err.println(e.message)
     }
@@ -45,7 +44,7 @@ fun retrieveFiles(args: Array<String>): Pair<File, File> {
     return Pair(File(input), File(output))
 }
 
-fun createNegativeImage(input: File, output: File) {
+fun createSeamImage(input: File, output: File) {
     val image: BufferedImage
 
     try {
@@ -54,7 +53,7 @@ fun createNegativeImage(input: File, output: File) {
         throw ImageProcessingException("Can't read input file: ${input.absolutePath}")
     }
 
-    convertToEnergyImage(image)
+    highlightSeam(image, Color(255, 0, 0))
 
     try {
         ImageIO.write(image, "png", output)
@@ -63,22 +62,58 @@ fun createNegativeImage(input: File, output: File) {
     }
 }
 
-fun convertToEnergyImage(image: BufferedImage) {
-    val energy: Array<DoubleArray> = Array(image.width) { DoubleArray(image.height) }
+fun highlightSeam(image: BufferedImage, color: Color) {
+    //the first value of pair indicates shortest path of vertical seam to the pixel
+    //the second value indicates which pixel of the previous row we came from
+    val pixels: Array<Array<Pair<Double, Int>>> = Array(image.width) { Array(image.height) { Pair(0.0, 0) } }
 
-    var maxEnergy = Double.MIN_VALUE
+    calcShortestVerticalPaths(pixels, image)
+
+    highlightShortestPath(pixels, image, color)
+}
+
+fun calcShortestVerticalPaths(pixels: Array<Array<Pair<Double, Int>>>, image: BufferedImage) {
+    for (y in 0 until image.height) {
+        for (x in 0 until image.width) {
+            val energy = calcEnergy(x, y, image)
+            if (y == 0) {
+                pixels[x][y] = Pair(energy, 0)
+            } else {
+                val topLeft = if (x == 0) Double.MAX_VALUE else pixels[x - 1][y - 1].first
+                val top = pixels[x][y - 1].first
+                val topRight = if (x == image.width - 1) Double.MAX_VALUE else pixels[x + 1][y - 1].first
+
+                if (topLeft <= top && topLeft <= topRight) {
+                    pixels[x][y] = Pair(topLeft + energy, -1)
+                } else if (top <= topRight && top <= topLeft) {
+                    pixels[x][y] = Pair(top + energy, 0)
+                } else if (topRight <= topLeft && topRight <= top) {
+                    pixels[x][y] = Pair(topRight + energy, 1)
+                }
+            }
+        }
+    }
+}
+
+fun highlightShortestPath(pixels: Array<Array<Pair<Double, Int>>>, image: BufferedImage, color: Color) {
+    var bottomRowMin = Double.MAX_VALUE
+    var coordOfBottomRowMin = -1
+    val bottomRow = image.height - 1
     for (x in 0 until image.width) {
-        for (y in 0 until image.height) {
-            energy[x][y] = calcEnergy(x, y, image)
-            maxEnergy = max(energy[x][y], maxEnergy)
+        if (pixels[x][bottomRow].first < bottomRowMin) {
+            coordOfBottomRowMin = x
+            bottomRowMin = pixels[x][bottomRow].first
         }
     }
 
-    for (x in 0 until image.width) {
-        for (y in 0 until image.height) {
-            val intensity = (255.0 * energy[x][y] / maxEnergy).toInt()
-            image.setRGB(x, y, Color(intensity, intensity, intensity).rgb)
-        }
+    println(bottomRowMin)
+
+    var x = coordOfBottomRowMin
+    var y = bottomRow
+    while (y != -1) {
+        image.setRGB(x, y, color.rgb)
+        x += pixels[x][y].second
+        y--
     }
 }
 
@@ -113,4 +148,3 @@ fun calcEnergy(x: Int, y: Int, image: BufferedImage): Double {
 }
 
 class ImageProcessingException(message: String) : Exception(message)
-
