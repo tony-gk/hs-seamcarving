@@ -9,6 +9,8 @@ import java.nio.file.Paths
 import javax.imageio.ImageIO
 import kotlin.math.sqrt
 
+class ImageProcessingException(message: String) : Exception(message)
+
 fun main(args: Array<String>) {
     try {
         val files = retrieveFiles(args)
@@ -147,4 +149,3 @@ fun calcEnergy(x: Int, y: Int, image: BufferedImage): Double {
     return sqrt((xGradient + yGradient).toDouble())
 }
 
-class ImageProcessingException(message: String) : Exception(message)
