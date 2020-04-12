@@ -55,16 +55,19 @@ fun createSeamImage(input: File, output: File) {
         throw ImageProcessingException("Can't read input file: ${input.absolutePath}")
     }
 
-    highlightSeam(image, Color(255, 0, 0))
+    val imageWrapper = ImageWrapper(image)
+
+    imageWrapper.rotate()
+    highlightSeam(imageWrapper, Color(255, 0, 0))
 
     try {
-        ImageIO.write(image, "png", output)
+        ImageIO.write(imageWrapper.getImage(), "png", output)
     } catch (e: IOException) {
         throw ImageProcessingException("Can't write output file: ${output.absolutePath}")
     }
 }
 
-fun highlightSeam(image: BufferedImage, color: Color) {
+fun highlightSeam(image: ImageWrapper, color: Color) {
     //the first value of pair indicates shortest path of vertical seam to the pixel
     //the second value indicates which pixel of the previous row we came from
     val pixels: Array<Array<Pair<Double, Int>>> = Array(image.width) { Array(image.height) { Pair(0.0, 0) } }
@@ -74,7 +77,7 @@ fun highlightSeam(image: BufferedImage, color: Color) {
     highlightShortestPath(pixels, image, color)
 }
 
-fun calcShortestVerticalPaths(pixels: Array<Array<Pair<Double, Int>>>, image: BufferedImage) {
+fun calcShortestVerticalPaths(pixels: Array<Array<Pair<Double, Int>>>, image: ImageWrapper) {
     for (y in 0 until image.height) {
         for (x in 0 until image.width) {
             val energy = calcEnergy(x, y, image)
@@ -97,7 +100,7 @@ fun calcShortestVerticalPaths(pixels: Array<Array<Pair<Double, Int>>>, image: Bu
     }
 }
 
-fun highlightShortestPath(pixels: Array<Array<Pair<Double, Int>>>, image: BufferedImage, color: Color) {
+fun highlightShortestPath(pixels: Array<Array<Pair<Double, Int>>>, image: ImageWrapper, color: Color) {
     var bottomRowMin = Double.MAX_VALUE
     var coordOfBottomRowMin = -1
     val bottomRow = image.height - 1
@@ -107,8 +110,6 @@ fun highlightShortestPath(pixels: Array<Array<Pair<Double, Int>>>, image: Buffer
             bottomRowMin = pixels[x][bottomRow].first
         }
     }
-
-    println(bottomRowMin)
 
     var x = coordOfBottomRowMin
     var y = bottomRow
@@ -127,7 +128,7 @@ fun correctCoord(x: Int, max: Int): Int {
     }
 }
 
-fun calcEnergy(x: Int, y: Int, image: BufferedImage): Double {
+fun calcEnergy(x: Int, y: Int, image: ImageWrapper): Double {
     val leftX = correctCoord(x - 1, image.width - 1)
     val topY = correctCoord(y - 1, image.height - 1)
 
