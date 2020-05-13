@@ -55,19 +55,18 @@ fun createSeamImage(input: File, output: File) {
         throw ImageProcessingException("Can't read input file: ${input.absolutePath}")
     }
 
-    val imageWrapper = ImageWrapper(image)
+    val rotatedImage = rotate90(image, false)
 
-    imageWrapper.rotate()
-    highlightSeam(imageWrapper, Color(255, 0, 0))
+    highlightSeam(rotatedImage, Color(255, 0, 0))
 
     try {
-        ImageIO.write(imageWrapper.getImage(), "png", output)
+        ImageIO.write(rotate90(rotatedImage, true), "png", output)
     } catch (e: IOException) {
         throw ImageProcessingException("Can't write output file: ${output.absolutePath}")
     }
 }
 
-fun highlightSeam(image: ImageWrapper, color: Color) {
+fun highlightSeam(image: BufferedImage, color: Color) {
     //the first value of pair indicates shortest path of vertical seam to the pixel
     //the second value indicates which pixel of the previous row we came from
     val pixels: Array<Array<Pair<Double, Int>>> = Array(image.width) { Array(image.height) { Pair(0.0, 0) } }
@@ -77,7 +76,7 @@ fun highlightSeam(image: ImageWrapper, color: Color) {
     highlightShortestPath(pixels, image, color)
 }
 
-fun calcShortestVerticalPaths(pixels: Array<Array<Pair<Double, Int>>>, image: ImageWrapper) {
+fun calcShortestVerticalPaths(pixels: Array<Array<Pair<Double, Int>>>, image: BufferedImage) {
     for (y in 0 until image.height) {
         for (x in 0 until image.width) {
             val energy = calcEnergy(x, y, image)
@@ -100,7 +99,7 @@ fun calcShortestVerticalPaths(pixels: Array<Array<Pair<Double, Int>>>, image: Im
     }
 }
 
-fun highlightShortestPath(pixels: Array<Array<Pair<Double, Int>>>, image: ImageWrapper, color: Color) {
+fun highlightShortestPath(pixels: Array<Array<Pair<Double, Int>>>, image: BufferedImage, color: Color) {
     var bottomRowMin = Double.MAX_VALUE
     var coordOfBottomRowMin = -1
     val bottomRow = image.height - 1
@@ -128,7 +127,7 @@ fun correctCoord(x: Int, max: Int): Int {
     }
 }
 
-fun calcEnergy(x: Int, y: Int, image: ImageWrapper): Double {
+fun calcEnergy(x: Int, y: Int, image: BufferedImage): Double {
     val leftX = correctCoord(x - 1, image.width - 1)
     val topY = correctCoord(y - 1, image.height - 1)
 
